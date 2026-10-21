@@ -45,7 +45,7 @@ jobs:
         run: docker build -t d13revision:${{ github.sha }} .
 
   trivy-scan:
-    needs: build
+    needs: docker-build
     runs-on: ubuntu-latest
 
     steps:
@@ -62,7 +62,7 @@ jobs:
           trivyignores: .trivyignore
 
   notify-telegram:
-    needs: [snyk-security, docker-build, trivy-scan]
+    needs: snyk-security
     if: always()
     runs-on: ubuntu-latest
 
