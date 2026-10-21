@@ -35,8 +35,34 @@ jobs:
       with:
         args: --severity-threshold=high --sarif-file-output=snyk.sarif
 
-  notify-telegram:
+  docker-build:
     needs: snyk-security
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t d13revision:${{ github.sha }} .
+
+  trivy-scan:
+    needs: docker-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: d13revision:${{ github.sha }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: false
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          trivyignores: .trivyignore
+
+  notify-telegram:
+    needs: trivy-scan
     if: always()
     runs-on: ubuntu-latest
 
