@@ -36,7 +36,7 @@ jobs:
         args: --severity-threshold=high --sarif-file-output=snyk.sarif
 
   docker-build:
-    needs: snyk-security
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -45,7 +45,7 @@ jobs:
         run: docker build -t d13revision:${{ github.sha }} .
 
   trivy-scan:
-    needs: docker-build
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -62,7 +62,7 @@ jobs:
           trivyignores: .trivyignore
 
   notify-telegram:
-    needs: trivy-scan
+    needs: [snyk-security, docker-build, trivy-scan]
     if: always()
     runs-on: ubuntu-latest
 
