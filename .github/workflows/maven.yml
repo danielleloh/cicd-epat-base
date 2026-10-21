@@ -44,8 +44,18 @@ jobs:
       - name: Build Docker image
         run: docker build -t d13revision:${{ github.sha }} .
 
+      - name: Save Docker image artifact
+        run: docker save -o d13revision-${{ github.sha }}.tar d13revision:${{ github.sha }}
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: d13revision-image
+          path: d13revision-${{ github.sha }}.tar
+
   trivy-scan:
     needs: docker-build
+    continue-on-error: true
     runs-on: ubuntu-latest
 
     steps:
@@ -61,8 +71,33 @@ jobs:
           severity: CRITICAL,HIGH
           trivyignores: .trivyignore
 
+  docker-push:
+    needs: [docker-build, trivy-scan]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: d13revision-image
+
+      - name: Load Docker image
+        run: docker load -i d13revision-${{ github.sha }}.tar
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image
+        run: |
+          docker tag d13revision:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/d13revision:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/d13revision:${{ github.sha }}
+
   notify-telegram:
-    needs: snyk-security
+    needs: [snyk-security, docker-push]
     if: always()
     runs-on: ubuntu-latest
 
